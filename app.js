@@ -20,7 +20,7 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.set('trust proxy', 1); // trust first proxy
+app.set('trust proxy', 1);
 app.use(
     session({
         secret: 'keyboard cat',
@@ -30,8 +30,7 @@ app.use(
             mongoUrl: process.env.MONGO_URL,
             collectionName: 'sessions',
         }),
-        // cookie: { secure: true },
-    }),
+    })
 );
 
 app.use(passport.initialize());
@@ -41,34 +40,6 @@ app.use(passport.session());
 app.get('/', (req, res) => {
     res.render('index');
 });
-
-// register route: get
-app.get('/register', (req, res) => {
-    res.render('register');
-});
-
-// register route: post
-app.post('/register', async (req, res) => {
-    try {
-        const user = await User.findOne({
-            username: req.body.username,
-        });
-        if (user) {
-            res.status(400).send('User is already registered');
-        }
-        bcrypt.hash(req.body.password, saltRounds, async (err, hash) => {
-            const newUser = new User({
-                username: req.body.username,
-                password: hash,
-            });
-            await newUser.save();
-            res.redirect('/login');
-        });
-    } catch (error) {
-        res.status(500).send('User not created');
-    }
-});
-
 const isLoggedIn = (req, res, next) => {
     if (req.isAuthenticated()) {
         res.redirect('/profile');
@@ -80,10 +51,15 @@ app.get('/login', isLoggedIn, (req, res) => {
     res.render('login');
 });
 
-// login route: post
-app.post(
-    '/login',
-    passport.authenticate('local', { failureRedirect: '/login', successRedirect: '/profile' }),
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile'] }));
+
+app.get(
+    '/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login', successRedirect: '/profile' }),
+    (req, res) => {
+        // Successful authentication, redirect home.
+        res.redirect('/');
+    }
 );
 
 const checkAuthenticated = (req, res, next) => {
@@ -95,7 +71,7 @@ const checkAuthenticated = (req, res, next) => {
 
 // isAuthenticated route: profile protected
 app.get('/profile', checkAuthenticated, (req, res) => {
-    res.render('profile');
+    res.render('profile', { username: req.user.username });
 });
 
 // logout route

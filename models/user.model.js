@@ -6,7 +6,7 @@ const userSchema = mongoose.Schema({
         required: true,
         unique: true,
     },
-    password: {
+    googleId: {
         type: String,
         required: true,
     },
